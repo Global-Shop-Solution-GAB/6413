@@ -1,0 +1,241 @@
+Program.Sub.Preflight.Start
+v.Global.sFile.Declare
+v.Global.sPID.Declare
+v.Global.sLog.Declare
+v.Global.sLogFile.Declare
+v.Global.sFPImport.Declare
+v.Global.sFPMove.Declare
+v.Global.iGrpID.Declare
+Program.External.Include.Library("6008.lib")
+Program.External.Include.Library("500030.lib")
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Robert Cole
+'Created: 08/30/2021
+f.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+v.Local.bRet.Declare
+v.Local.sPID.Declare
+v.Local.sFP.Declare
+
+f.Intrinsic.Control.CallSub(DIRECTORY_CHECK)
+
+f.Intrinsic.String.Build("{0}{1} {2} - STARTING PROCESS FOR 6413.",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Global.sLog)
+f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+
+f.Intrinsic.String.Build("{0}\{1}",v.Caller.GlobalDir,"CUSTOM\6413\6413LOCK.txt",v.Global.sPID)
+f.Intrinsic.File.Exists(v.Global.sPID,v.Local.bRet)
+
+f.Intrinsic.Control.If(v.Local.bRet,=,false)
+
+	f.Intrinsic.File.String2File(v.Global.sPID,v.Ambient.PID)
+
+	f.Intrinsic.String.Build("{0}{1} {2} - NO PID LOCK FOUND, CREATING LOCK AND STARTING IMPORT.",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Global.sLog)
+	f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+	
+	f.Intrinsic.Control.CallSub(Get_RepairDT)
+
+f.Intrinsic.Control.Else
+
+	f.Intrinsic.File.File2String(v.Global.sPID,v.Local.sPID)
+	f.Intrinsic.Task.PIDRunning(v.Local.sPID,v.Local.bRet)
+	
+	f.Intrinsic.Control.If(v.Local.bRet,=,false)
+	
+		f.Intrinsic.File.DeleteFile(v.Global.sPID)
+		
+		f.Intrinsic.File.String2File(v.Global.sPID,v.Ambient.PID)
+		
+		f.Intrinsic.String.Build("{0}{1} {2} - OLD PID LOCK FOUND, BUT NO LONGER RUNNING.  CREATING NEW LOCK AND STARTING IMPORT.",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Global.sLog)
+		f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+
+		f.Intrinsic.Control.CallSub(Get_RepairDT)
+		
+	f.Intrinsic.Control.Else
+	
+		f.Intrinsic.String.Build("{0}{1} {2} - 6413 IS CURRENTLY RUNNING A PREVIOUS SESSION. CLOSING THIS IMPORT SESSION.",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Global.sLog)
+		f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+		
+		f.Intrinsic.Control.End
+	
+	f.Intrinsic.Control.EndIf
+
+f.Intrinsic.Control.EndIf
+
+f.Intrinsic.Control.End
+
+f.Intrinsic.Control.Catch
+	f.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	f.Intrinsic.String.Build("{0}{1} {2} - {3}",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Local.sError,v.Global.sLog)
+	f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+f.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.DIRECTORY_CHECK.Start
+'CHECK FOR AND CREATE ANY DIRECTORIES NEEDED FOR 6413
+f.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+v.Local.bRet.Declare
+v.Local.sPID.Declare
+v.Local.sFP.Declare
+v.Local.sLog.Declare
+v.Local.sLogFile.Declare
+
+f.Intrinsic.String.Build("{0}\CUSTOM\6413",v.Caller.GlobalDir,v.Local.sFP)
+f.Intrinsic.File.DirExists(v.Local.sFP,v.Local.bRet)
+f.Intrinsic.Control.If(v.Local.bRet,=,false)
+	f.Intrinsic.File.CreateDir(v.Local.sFP)
+f.Intrinsic.Control.EndIf
+v.Local.sFP.Set("")
+
+f.Intrinsic.String.Build("{0}\CUSTOM\6413\LOG",v.Caller.GlobalDir,v.Local.sFP)
+f.Intrinsic.File.DirExists(v.Local.sFP,v.Local.bRet)
+f.Intrinsic.Control.If(v.Local.bRet,=,false)
+	f.Intrinsic.File.CreateDir(v.Local.sFP)
+f.Intrinsic.Control.EndIf
+
+f.Intrinsic.String.Build("{0}\6413.log",v.Local.sFP,v.Local.sFP)
+f.Intrinsic.File.Exists(v.Local.sFP,v.Local.bRet)
+f.Intrinsic.Control.If(v.Local.bRet,=,false)
+	f.Intrinsic.String.Build("{0} {1} - INITIALIZATION OF LOG FILE.",V.Ambient.Date,v.Ambient.Time,v.Local.sLog)
+	f.Intrinsic.File.String2File(v.Local.sFP,v.Local.sLog)
+f.Intrinsic.Control.EndIf
+
+v.Global.sLogFile.Set(v.Local.sFP)
+
+f.Intrinsic.Control.Catch
+	f.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	f.Intrinsic.String.Build("{0}{1} {2} - {3}",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Local.sError,v.Global.sLog)
+	f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+f.Intrinsic.Control.EndTry
+Program.Sub.DIRECTORY_CHECK.End
+
+Program.Sub.Get_RepairDT.Start
+f.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+f.ODBC.Connection!conx.OpenCompanyConnection
+
+f.Data.DataTable.CreateFromSQL("dtAPP","conx","select * from GCG_6413_REPAIR_APP_INT where STATUS = 'NEW' order by JOB, SUFFIX, SEQUENCE",true)
+
+f.ODBC.Connection!conx.Close
+
+f.Intrinsic.Control.CallSub(Seq_Add)
+
+f.Intrinsic.Control.Catch
+	f.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	f.Intrinsic.String.Build("{0}{1} {2} - {3}",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Local.sError,v.Global.sLog)
+	f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+f.Intrinsic.Control.EndTry
+Program.Sub.Get_RepairDT.End
+
+Program.Sub.Seq_Add.Start
+f.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+v.Local.sSQL.Declare
+v.Local.sSQLRet.Declare
+v.Local.iSeq.Declare
+v.Local.sSequence.Declare
+v.Local.sDate.Declare
+v.Local.sDateD.Declare
+v.Local.sDateSch.Declare
+v.Local.sDateSchD.Declare
+v.Local.sPWC.Declare
+v.Local.i.Declare
+v.Local.iRet.Declare
+v.Local.sReturn.Declare
+v.Local.sSchedD.Declare
+v.Local.fQty.Declare
+
+v.Local.sSchedD.Set("F")
+
+f.Global.General.ReadOption("401113",3,0,"0000",v.Local.iRet)
+
+f.Intrinsic.String.Format(v.Ambient.Date,"MMDDYY",v.Local.sDate)
+f.Intrinsic.String.Format(v.Ambient.Date,"YYMMDD",v.Local.sDateSch)
+
+f.Intrinsic.Control.For(V.Local.i, 0, V.DataTable.dtAPP.RowCount--, 1)
+
+	f.Intrinsic.Control.If(v.DataTable.dtAPP.RowCount,>,0,and,v.DataTable.dtAPP(v.Local.i).LMO!FieldValTrim,<>,"",v.DataTable.dtAPP(v.Local.i).STATUS!FieldValTrim,=,"NEW")
+	
+		f.ODBC.Connection!conx.OpenCompanyConnection
+		
+		f.Intrinsic.String.Build("select QTY_ORDER, DATE_CLOSED from V_JOB_HEADER where JOB = '{0}' AND SUFFIX = '{1}'",v.DataTable.dtAPP(v.Local.i).JOB!FieldValTrim,v.DataTable.dtAPP(v.Local.i).SUFFIX!FieldValTrim,v.Local.sSQL)
+		f.ODBC.Connection!conx.ExecuteandReturn(v.Local.sSQL,v.Local.sSQLRet)
+		f.Intrinsic.String.Split(v.Local.sSQLRet,"*!*",v.Local.sSQLRet)
+		
+		f.Intrinsic.Control.If(v.Local.sSQLRet(1),=,"1/1/1900",and,v.Local.sSQLRet(1),<>,"OOB")
+	   
+		    f.Intrinsic.Math.Div(v.DataTable.dtAPP(v.Local.i).QTY!FieldVal,v.Local.sSQLRet(0),v.Local.fQty)
+		
+			f.Intrinsic.String.Build("select isnull(max(cast(SEQ as INT)),0) as SEQ from V_JOB_OPERATIONS where JOB = '{0}' and SUFFIX = '{1}' and SEQ < '990000'",v.DataTable.dtAPP(v.Local.i).JOB!FieldValTrim,v.DataTable.dtAPP(v.Local.i).SUFFIX!FieldValTrim,v.Local.sSQL)
+			f.ODBC.Connection!conx.ExecuteAndReturn(v.Local.sSQL,v.Local.iSeq)
+			f.Intrinsic.Math.Add(v.Local.iSeq,v.Local.iRet,v.Local.iSeq)
+			f.Intrinsic.String.LPad(v.Local.iSeq,"0",6,v.Local.sSequence)
+			
+			f.Intrinsic.Control.If(v.DataTable.dtAPP(v.Local.i).LMO!FieldVal,=,"L")
+				f.Intrinsic.String.Build("select rtrim(WC_NAME) as WC_NAME, STANDARD_COST, rtrim('HR ') as UM from V_WORKCENTERS where MACHINE = '{0}'",v.DataTable.dtAPP(v.Local.i).WORKCENTER!FieldVal,v.Local.sSQL)
+				f.ODBC.Connection!conx.ExecuteAndReturn(v.Local.sSQL,v.Local.sReturn)
+				v.Local.sPWC.Set(v.DataTable.dtAPP(v.Local.i).WORKCENTER!FieldVal)
+			f.Intrinsic.Control.ElseIf(v.DataTable.dtAPP(v.Local.i).LMO!FieldVal,=,"M")
+				f.Intrinsic.String.Build("select rtrim(DESCRIPTION) as DESCRIPTION, AMT_COST, UM_INVENTORY from V_INVENTORY_ALL where PART = '{0}'",v.DataTable.dtAPP(v.Local.i).PART!FieldVal,v.Local.sSQL)
+				f.ODBC.Connection!conx.ExecuteAndReturn(v.Local.sSQL,v.Local.sReturn)
+				v.Local.sPWC.Set(v.DataTable.dtAPP(v.Local.i).PART!FieldVal)
+			f.Intrinsic.Control.EndIf
+			
+			f.Intrinsic.String.Split(v.Local.sReturn,"*!*",v.Local.sReturn)
+			
+			f.Intrinsic.String.Format(v.DataTable.dtAPP(v.Local.i).DATE_DUE!FieldVal,"MMDDYY",v.Local.sDateD)
+			f.Intrinsic.String.Format(v.DataTable.dtAPP(v.Local.i).DATE_DUE!FieldVal,"YYMMDD",v.Local.sDateSchD)
+		   
+'*JOB (WONo), SUFFIX(Suffix), SEQ(Seq), OPCODE (OpCode), SETUP (SetUp), *LMO (LMO), DESC_SEQ (OpDesc), UM (UM), PWC (PWC), ROUTER (RouterNo), ROUTER_SEQ (RouterSeq), SETUP_TIME (SetupTime), UNIT (Unit), BURDEN (Burden), HOURS_ESTIMATED (EstHrs), DATE_START "MMDDYY" (StartDate), DATE_DUE "MMDDYY" (DueDate), DATE_ORDER "MMDDYY" (OrderDate), RATE (Rate), CODE_SORT (SortCode), PROJECT (ProjGrp), USER_SIGNOFF (SignoffUser), COMPLETE_REQ "Y/N" (ComplReq), RT_SAVE "Y/N" (SaveBack2Rt), OVERLAP (Overlap)
+			f.Data.DataTable.AddRow("6008","WONo",v.DataTable.dtAPP(v.Local.i).JOB!FieldValTrim,"Suffix",v.DataTable.dtAPP(v.Local.i).SUFFIX!FieldValTrim,"Seq",v.Local.sSequence,"OpDesc",v.Local.sReturn(0),"UM",v.Local.sReturn(2),"LMO",v.DataTable.dtAPP(v.Local.i).LMO!FieldVal,"PWC",v.Local.sPWC,"Unit",v.Local.fQty,"Rate",v.Local.sReturn(1))
+'DATE_START (StartDate) "YYMMDD", DATE_DUE (DueDate) "YYMMDD", JOB (WONum), SUFFIX (Suffix), SEQ (Seq), SCHEDULE (Schedule) "F" "B" "H"
+'		f.Data.DataTable.AddRow("500030","StartDate",v.Local.sDateSch,"DueDate",v.Local.sDateSchD,"WONum",v.DataTable.dtAPP(v.Local.i).JOB!FieldValTrim,"Suffix",v.DataTable.dtAPP(v.Local.i).SUFFIX!FieldValTrim,"Seq",v.Local.sSequence,"Schedule","B")
+			f.Data.DataTable.AddRow("500030","StartDate",v.Local.sDate,"DueDate",v.Local.sDate,"WONum",v.DataTable.dtAPP(v.Local.i).JOB!FieldValTrim,"Suffix",v.DataTable.dtAPP(v.Local.i).SUFFIX!FieldValTrim,"Schedule",V.Local.sSchedD)
+			
+			f.Intrinsic.String.Build("UPDATE GCG_6413_REPAIR_APP_INT set SEQUENCE = '{0}', STATUS = 'SCHEDULED' where ID_REPAIR = '{1}'",v.Local.sSequence,v.DataTable.dtAPP(v.Local.i).ID_REPAIR!FieldValTrim,v.Local.sSQL)
+			f.ODBC.Connection!conx.Execute(v.Local.sSQL)
+			f.Data.DataTable.SetValue("dtAPP",v.Local.i,"SEQUENCE",v.Local.sSequence,"STATUS","SCHEDULED")
+			
+			f.Intrinsic.Control.CallSub(6008Sync)
+			f.Intrinsic.Control.CallSub(500030Sync)
+			
+			f.Intrinsic.String.Build("{0}{1} {2} - {3}-{4} SEQ {5} FOR {6} {7} WAS SCHEDULED",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.DataTable.dtAPP(v.Local.i).JOB!FieldValTrim,v.DataTable.dtAPP(v.Local.i).SUFFIX!FieldValTrim,v.Local.sSequence,v.Local.sPWC,v.Local.sReturn(0),v.Global.sLog)
+			f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+			
+		f.Intrinsic.Control.ElseIf(v.Local.sSQLRet(1),<>,"1/1/1900",and,v.Local.sSQLRet(1),<>,"OOB")
+		
+			f.Intrinsic.String.Build("UPDATE GCG_6413_REPAIR_APP_INT set STATUS = 'CLOSED' where ID_REPAIR = '{1}'",v.Local.sSequence,v.DataTable.dtAPP(v.Local.i).ID_REPAIR!FieldValTrim,v.Local.sSQL)
+			f.ODBC.Connection!conx.Execute(v.Local.sSQL)
+			f.Data.DataTable.SetValue("dtAPP",v.Local.i,"SEQUENCE",v.Local.sSequence,"STATUS","CLOSED")
+			f.Intrinsic.String.Build("{0}{1} {2} - {3}-{4} WAS FLAGGED CLOSED, NO SEQUENCE ADDED",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.DataTable.dtAPP(v.Local.i).JOB!FieldValTrim,v.DataTable.dtAPP(v.Local.i).SUFFIX!FieldValTrim,v.Global.sLog)
+			f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+			
+		f.Intrinsic.Control.Else
+		
+			f.Intrinsic.String.Build("UPDATE GCG_6413_REPAIR_APP_INT set STATUS = 'NOT FOUND' where ID_REPAIR = '{1}'",v.Local.sSequence,v.DataTable.dtAPP(v.Local.i).ID_REPAIR!FieldValTrim,v.Local.sSQL)
+			f.ODBC.Connection!conx.Execute(v.Local.sSQL)
+			f.Data.DataTable.SetValue("dtAPP",v.Local.i,"SEQUENCE",v.Local.sSequence,"STATUS","NOT FOUND")
+		
+			f.Intrinsic.String.Build("{0}{1} {2} - {3}-{4} WAS NOT FOUND, NO SEQUENCE ADDED",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.DataTable.dtAPP(v.Local.i).JOB!FieldValTrim,v.DataTable.dtAPP(v.Local.i).SUFFIX!FieldValTrim,v.Global.sLog)
+			f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+		
+		f.Intrinsic.Control.EndIf
+		
+		f.ODBC.Connection!conx.Close
+		
+	f.Intrinsic.Control.EndIf
+	
+f.Intrinsic.Control.Next(V.Local.i)
+
+f.Intrinsic.Control.Catch
+	f.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	f.Intrinsic.String.Build("{0}{1} {2} - {3}",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Local.sError,v.Global.sLog)
+	f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+f.Intrinsic.Control.EndTry
+Program.Sub.Seq_Add.End
